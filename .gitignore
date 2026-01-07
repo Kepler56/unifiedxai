@@ -46,7 +46,6 @@ htmlcov/
 temp_files/
 *.tmp
 *.temp
-PRESENTATION_SCRIPT.md
 
 # Environment variables
 .env
