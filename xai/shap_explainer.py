@@ -65,10 +65,16 @@ class ShapExplainer:
         Returns:
             Masked image
         """
-        masked = image.copy()
-        for i, val in enumerate(mask):
-            if val == 0:
-                masked[self.segments == i] = background
+        masked = image.copy().astype(np.float64)
+        unique_segments = np.unique(self.segments)
+        
+        for i, seg_id in enumerate(unique_segments):
+            if i < len(mask) and mask[i] == 0:
+                seg_mask = self.segments == seg_id
+                # Apply background to each channel
+                for c in range(masked.shape[2]):
+                    masked[:, :, c] = np.where(seg_mask, background, masked[:, :, c])
+        
         return masked
     
     def predict_fn(self, masks: np.ndarray, image: np.ndarray) -> np.ndarray:
@@ -110,19 +116,29 @@ class ShapExplainer:
         segments = self._segment_image(image, n_segments)
         n_features = len(np.unique(segments))
         
-        # Create prediction function
-        def predict_wrapper(masks):
-            return self.predict_fn(masks, image)
+        # Store original image for masking
+        self._original_image = image.copy()
         
-        # Create background (all segments visible)
-        background = np.ones((1, n_features))
+        # Create prediction function that takes mask and returns predictions
+        def predict_wrapper(masks):
+            predictions = []
+            for mask in masks:
+                masked_img = self._mask_image(self._original_image, mask)
+                if masked_img.max() > 1:
+                    masked_img = masked_img / 255.0
+                pred = self.model.predict(np.expand_dims(masked_img, axis=0), verbose=0)
+                predictions.append(pred[0])
+            return np.array(predictions)
+        
+        # Create background (all segments hidden = baseline)
+        background = np.zeros((1, n_features))
         
         # Create SHAP explainer
         self.explainer = shap.KernelExplainer(predict_wrapper, background)
         
-        # Generate explanation
+        # Generate explanation for full image (all segments visible)
         test_mask = np.ones((1, n_features))
-        shap_values = self.explainer.shap_values(test_mask, nsamples=nsamples)
+        shap_values = self.explainer.shap_values(test_mask, nsamples=nsamples, silent=True)
         
         # Get prediction
         if image.max() > 1:
@@ -164,18 +180,26 @@ class ShapExplainer:
         
         # Get SHAP values for the target class
         if isinstance(shap_values, list):
-            class_shap = shap_values[class_idx][0]
+            class_shap = shap_values[class_idx][0] if len(shap_values) > class_idx else shap_values[0][0]
         else:
-            class_shap = shap_values[0]
+            class_shap = shap_values[0] if shap_values.ndim > 1 else shap_values
+        
+        # Ensure class_shap is 1D array
+        class_shap = np.asarray(class_shap).flatten()
         
         # Create heatmap
-        heatmap = np.zeros(image.shape[:2])
-        for i, val in enumerate(class_shap):
-            heatmap[self.segments == i] = val
+        heatmap = np.zeros(image.shape[:2], dtype=np.float64)
+        unique_segments = np.unique(self.segments)
+        
+        for i, seg_id in enumerate(unique_segments):
+            if i < len(class_shap):
+                mask = self.segments == seg_id
+                heatmap[mask] = float(class_shap[i])
         
         # Normalize
-        if np.abs(heatmap).max() > 0:
-            heatmap = heatmap / np.abs(heatmap).max()
+        max_val = np.abs(heatmap).max()
+        if max_val > 0:
+            heatmap = heatmap / max_val
         
         return heatmap
     
@@ -228,13 +252,16 @@ class ShapExplainer:
         plt.colorbar(im, ax=axes[2], fraction=0.046, pad=0.04)
         
         # Overlay
-        overlay = display_image.copy()
+        overlay = display_image.copy().astype(np.float64)
         # Red for positive, blue for negative
         positive_mask = heatmap > 0.1
         negative_mask = heatmap < -0.1
-        overlay_colored = np.zeros_like(overlay)
-        overlay_colored[positive_mask] = [1, 0, 0]  # Red
-        overlay_colored[negative_mask] = [0, 0, 1]  # Blue
+        overlay_colored = np.zeros_like(overlay, dtype=np.float64)
+        
+        # Apply colors channel by channel to avoid NumPy boolean indexing issues
+        overlay_colored[:, :, 0] = np.where(positive_mask, 1.0, overlay_colored[:, :, 0])  # Red channel
+        overlay_colored[:, :, 2] = np.where(negative_mask, 1.0, overlay_colored[:, :, 2])  # Blue channel
+        
         blended = 0.7 * overlay + 0.3 * overlay_colored
         
         axes[3].imshow(np.clip(blended, 0, 1))

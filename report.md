@@ -48,7 +48,7 @@ This project was developed with assistance from **GitHub Copilot (Claude Opus 4.
 
 1. **Audio Classification Demo:**
    - Upload a .wav audio file
-   - Select MobileNetV2 model
+   - Select MobileNet model
    - Run LIME, Grad-CAM, and SHAP explanations
    - Show comparison tab with all three techniques
 

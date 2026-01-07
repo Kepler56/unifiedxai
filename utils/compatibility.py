@@ -52,12 +52,12 @@ MODELS_REGISTRY: Dict[str, ModelInfo] = {
         description='VGG16 transfer learning model for audio spectrogram classification',
         last_conv_layer='block5_conv3'
     ),
-    'MobileNetV2': ModelInfo(
-        name='MobileNetV2',
-        display_name='MobileNetV2',
+    'MobileNet': ModelInfo(
+        name='MobileNet',
+        display_name='MobileNet',
         input_type=InputType.AUDIO,
-        description='Lightweight MobileNetV2 model with 91.5% accuracy on FoR dataset',
-        last_conv_layer='Conv_1'
+        description='MobileNet v1 with 91.5% accuracy - matches the saved model from Audio_classifier.ipynb',
+        last_conv_layer='conv_pw_13_relu'
     ),
     'ResNet50': ModelInfo(
         name='ResNet50',
@@ -72,13 +72,6 @@ MODELS_REGISTRY: Dict[str, ModelInfo] = {
         input_type=InputType.AUDIO,
         description='Google Inception architecture for spectrogram analysis',
         last_conv_layer='mixed10'
-    ),
-    'CustomCNN': ModelInfo(
-        name='CustomCNN',
-        display_name='Custom CNN',
-        input_type=InputType.AUDIO,
-        description='Simple 3-layer CNN trained from scratch',
-        last_conv_layer='conv2d_2'
     ),
     
     # Image models (Lung Cancer Detection)

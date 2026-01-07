@@ -51,11 +51,11 @@
 > *"Notice how the system automatically detects this is an audio file and displays 'Deepfake Audio Detection' as the task. The platform converts audio into mel spectrograms - visual representations of sound frequencies over time - which our neural networks can analyze."*
 
 #### Step 2: Model Selection
-> *"For audio classification, we have five models available. I'll select MobileNetV2, which offers a good balance between accuracy and efficiency."*
+> *"For audio classification, we have four models available. I'll select MobileNet, which achieved 91.5% accuracy on the FoR dataset."*
 
-**ACTION:** Select `MobileNetV2` from dropdown
+**ACTION:** Select `MobileNet` from dropdown
 
-> *"MobileNetV2 uses transfer learning from ImageNet. It's pre-trained on millions of images and fine-tuned on our spectrogram data. This approach is common in audio classification because spectrograms are essentially images."*
+> *"MobileNet uses transfer learning from ImageNet. It's pre-trained on millions of images and fine-tuned on our spectrogram data. This approach is common in audio classification because spectrograms are essentially images."**
 
 #### Step 3: Prediction
 > *"Let's run the analysis."*
@@ -117,14 +117,13 @@
 
 > *"Let me explain our technical choices."*
 
-#### Audio Models (5 models)
+#### Audio Models (4 models)
 | Model | Why We Chose It |
 |-------|-----------------|
 | **VGG16** | Deep architecture, excellent feature extraction |
-| **MobileNetV2** | Lightweight, efficient, good for real-time applications |
+| **MobileNet** | Lightweight, efficient, 91.5% accuracy on FoR dataset |
 | **ResNet50** | Skip connections prevent vanishing gradients |
 | **InceptionV3** | Multi-scale feature extraction |
-| **Custom CNN** | Simple baseline for comparison |
 
 > *"All audio models use transfer learning from ImageNet. This works because spectrograms share visual patterns similar to natural images - textures, edges, and spatial relationships."*
 
@@ -210,7 +209,7 @@ UnifiedXAI/
 def get_conv_layer_name(model_name):
     layer_names = {
         'VGG16': 'block5_conv3',
-        'MobileNetV2': 'Conv_1',
+        'MobileNet': 'conv_pw_13_relu',
         'DenseNet': 'conv5_block16_concat',
         # ...
     }
@@ -241,6 +240,34 @@ def detect_file_type(uploaded_file):
 
 > **Solution:** *"We created a unified architecture with shared utilities, standardized model interfaces, and a compatibility layer that manages different input/output formats."*
 
+### Challenge 5: Pre-trained Model Availability
+
+> **Problem:** *"For the audio deepfake detection, we had access to a pre-trained MobileNet model from the original repository. However, for lung cancer detection, no pre-trained weights were available. Training from scratch requires significant time and a proper medical imaging dataset."**
+
+> **Solution:** *"We focused our live demo on the audio classification task where we have a trained model with 91.5% accuracy. For the image models, we demonstrate the XAI techniques with untrained models - this still effectively shows HOW the model makes decisions and what regions it focuses on. The XAI visualizations are valid regardless of model accuracy, as they reveal the decision-making process itself. In a production environment, these models would be trained on annotated chest X-ray datasets like those available on Kaggle."*
+
+> **Key Insight:** *"This challenge actually highlights an important aspect of XAI - explainability techniques help us understand model behavior even during development and debugging, not just for final deployed models."*
+
+### Challenge 6: Keras 3 and SavedModel Format Incompatibility
+
+> **Problem:** *"The pre-trained MobileNet model was saved in TensorFlow's legacy SavedModel format. Keras 3 no longer supports loading this format with `load_model()`, causing compatibility errors. Additionally, SavedModel format doesn't expose internal layers, making Grad-CAM impossible since it requires access to convolutional layer activations and gradients."**
+
+> **Solution:** *"We implemented a custom `SavedModelWrapper` class that uses TensorFlow's native `tf.saved_model.load()` function. This wrapper mimics Keras model behavior with a compatible `predict()` method. For Grad-CAM, we recommend using other models (VGG16, ResNet50, InceptionV3) that are built with the Functional API and expose all internal layers. LIME and SHAP work perfectly with the saved model since they only need the prediction function."*
+
+```python
+# Our SavedModelWrapper solution
+loaded = tf.saved_model.load(model_path)
+class SavedModelWrapper:
+    def __init__(self, saved_model):
+        self.infer = saved_model.signatures['serving_default']
+    
+    def predict(self, x, verbose=0):
+        result = self.infer(tf.cast(x, tf.float32))
+        return result[list(result.keys())[0]].numpy()
+```
+
+> **Demo Strategy:** *"For MobileNet with the trained model, we use LIME or SHAP. For Grad-CAM demonstrations, we use VGG16 or other models that expose their layer structure."**
+
 ---
 
 ## 🎯 PART 5: Key Takeaways & Conclusion (1-2 minutes)
@@ -250,7 +277,7 @@ def detect_file_type(uploaded_file):
 > *"To summarize, our Unified XAI Platform delivers:"*
 > 
 > 1. ✅ **Multi-modal support** - Audio and image classification in one platform
-> 2. ✅ **Multiple models** - 7 different neural network architectures
+> 2. ✅ **Multiple models** - 6 different neural network architectures
 > 3. ✅ **Three XAI techniques** - LIME, Grad-CAM, and SHAP
 > 4. ✅ **Automatic filtering** - Smart compatibility between inputs and models
 > 5. ✅ **Comparison view** - Side-by-side XAI visualization

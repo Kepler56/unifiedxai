@@ -13,14 +13,14 @@ A multi-modal classification platform with Explainable AI (XAI) capabilities for
 
 This project integrates two existing XAI systems into a single interactive platform:
 
-1. **Deepfake Audio Detection:** Detects real vs. fake audio using neural networks (VGG16, MobileNetV2, ResNet50, InceptionV3, Custom CNN) trained on mel spectrograms from the Fake-or-Real (FoR) dataset.
+1. **Deepfake Audio Detection:** Detects real vs. fake audio using neural networks (VGG16, MobileNet, ResNet50, InceptionV3) trained on mel spectrograms from the Fake-or-Real (FoR) dataset.
 
 2. **Lung Cancer Detection:** Detects malignant tumors in chest X-rays using AlexNet and DenseNet121 with transfer learning.
 
 ### Key Features
 
 - 🎵 **Multi-modal Input:** Support for audio (.wav) and image (.png, .jpg) files
-- 🤖 **Multiple Models:** 5 audio models + 2 image models
+- 🤖 **Multiple Models:** 4 audio models + 2 image models
 - 🔍 **XAI Techniques:** LIME, Grad-CAM, and SHAP implementations
 - ⚡ **Automatic Filtering:** XAI methods filtered based on input type
 - 📊 **Comparison View:** Side-by-side XAI technique comparison
@@ -107,7 +107,7 @@ UnifiedXAI/
 │
 ├── models/               # Classification models
 │   ├── __init__.py
-│   ├── audio_models.py   # VGG16, MobileNetV2, ResNet50, InceptionV3, CustomCNN
+│   ├── audio_models.py   # VGG16, MobileNet, ResNet50, InceptionV3
 │   └── image_models.py   # AlexNet, DenseNet121
 │
 ├── xai/                  # XAI implementations
@@ -134,10 +134,10 @@ UnifiedXAI/
 | Model | Description | Input Size |
 |-------|-------------|------------|
 | VGG16 | Transfer learning from ImageNet | 224×224×3 |
-| MobileNetV2 | Lightweight, efficient (best accuracy: 91.5%) | 224×224×3 |
+| MobileNet | Lightweight, efficient (best accuracy: 91.5%) | 224×224×3 |
 | ResNet50 | Deep residual network | 224×224×3 |
 | InceptionV3 | Google's inception architecture | 224×224×3 |
-| Custom CNN | 3-layer CNN trained from scratch | 224×224×3 |
+
 
 ### Image Classification (Lung Cancer Detection)
 

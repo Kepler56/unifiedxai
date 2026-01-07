@@ -300,7 +300,7 @@ def gradcam_explain_image(model, image: np.ndarray, last_conv_layer: str = None,
 CONV_LAYER_NAMES = {
     # Audio models
     'VGG16': 'block5_conv3',
-    'MobileNetV2': 'Conv_1',
+    'MobileNet': 'conv_pw_13_relu',  # MobileNet v1 last pointwise conv
     'ResNet50': 'conv5_block3_out',
     'InceptionV3': 'mixed10',
     'CustomCNN': 'conv2d_2',

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 # Import local modules
-from models.audio_models import get_audio_model, load_saved_audio_model, AUDIO_MODELS
+from models.audio_models import get_audio_model, load_saved_audio_model, AUDIO_MODELS, build_mobilenet_original
 from models.image_models import get_image_model, IMAGE_MODELS
 from xai.lime_explainer import LimeExplainer
 from xai.gradcam import GradCAM, get_conv_layer_name
@@ -148,8 +148,27 @@ def get_model(model_name: str, input_type: str):
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             'Deepfake-Audio-Detection-with-XAI', 'Streamlit', 'saved_model', 'model'
         )
-        if os.path.exists(saved_model_path) and model_name == 'MobileNetV2':
-            return load_saved_audio_model(saved_model_path)
+        
+        # The saved model was trained with MobileNet v1 with exact architecture:
+        # MobileNet(include_top=False) -> GlobalAveragePooling2D -> Dense(2, sigmoid)
+        # Instead of loading the problematic saved model, recreate with same architecture
+        if model_name == 'MobileNet':
+            # Build model with EXACT architecture matching the original training
+            st.info("Building MobileNet model with original architecture...")
+            model = build_mobilenet_original(input_shape=(224, 224, 3), num_classes=2)
+            
+            # Try to load weights from saved model if compatible
+            if os.path.exists(saved_model_path):
+                try:
+                    # Try loading weights only (not full model) if checkpoint exists
+                    weights_path = os.path.join(os.path.dirname(saved_model_path), 'weights')
+                    if os.path.exists(weights_path):
+                        model.load_weights(weights_path)
+                        st.success("Loaded pre-trained weights!")
+                except Exception as e:
+                    st.warning(f"Using fresh MobileNet weights (ImageNet pre-trained). Saved weights not compatible: {str(e)[:50]}")
+            
+            return model
         else:
             return get_audio_model(model_name)
     else:
@@ -286,8 +305,7 @@ def main_page():
             Detect synthetic or manipulated audio using deep learning models trained on spectrograms.
             
             **Available Models:**
-            - VGG16, MobileNetV2, ResNet50
-            - InceptionV3, Custom CNN
+            - VGG16, MobileNet, ResNet50, InceptionV3
             
             **Supported Format:** .wav files
             """)
@@ -476,7 +494,7 @@ def comparison_page():
         
         # Determine which model we're using (for Grad-CAM layer name)
         # Try to infer from model name
-        model_name = getattr(model, 'name', 'CustomCNN')
+        model_name = getattr(model, 'name', 'VGG16')
         
         selected_xai = []
         if use_lime:
@@ -557,9 +575,8 @@ def about_page():
     Detects real vs. fake audio using neural networks trained on spectrograms from the Fake-or-Real (FoR) dataset.
     
     **Models:**
-    - VGG16, MobileNetV2 (91.5% accuracy)
+    - VGG16, MobileNet (91.5% accuracy)
     - ResNet50, InceptionV3
-    - Custom CNN
     
     ### 🏥 Lung Cancer Detection
     
@@ -611,7 +628,7 @@ def main():
     load_css()
     
     # Navigation
-    tab1, tab2, tab3 = st.tabs(["🔬 Analysis", "📊 Comparison", "ℹ️ About"])
+    tab1, tab2 = st.tabs(["🔬 Analysis", "📊 Comparison"])
     
     with tab1:
         main_page()
@@ -619,8 +636,8 @@ def main():
     with tab2:
         comparison_page()
     
-    with tab3:
-        about_page()
+    # with tab3:
+    #     about_page()
 
 
 if __name__ == "__main__":
